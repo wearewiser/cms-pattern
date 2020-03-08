@@ -1,0 +1,395 @@
+# Javascript Node CircleCI 2.1 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2.1
+orbs:
+  slack: circleci/slack@2.2.0
+workflows:
+# START DEVOPS CONFIG
+  DevOps:
+    jobs:
+      - checkout:
+          name: "Checkout"
+      - env:
+          name: "Environment"
+          requires:
+            - "Checkout"
+      - dependencies:
+          name: "Dependencies"
+          skip: false
+          requires:
+            - "Environment"
+      - test:
+          name: "Unit Test"
+          skip: true
+          requires:
+            - "Dependencies"
+      - e2e:
+          name: "E2E Test"
+          skip: true
+          requires:
+            - "Dependencies"
+      - lint:
+          name: "Lint"
+          skip: false
+          requires:
+            - "Dependencies"
+      - audit:
+          name: "Audit"
+          skip: true
+          requires:
+            - "Dependencies"
+      - build:
+          name: "Build"
+          skip: false
+          target: "lib"
+          requires:
+            - "Unit Test"
+            - "E2E Test"
+            - "Lint"
+            - "Audit"
+      - deploy:
+          name: "Release/1"
+          skip: false
+          context: "global"
+          requires:
+            - "Build"
+          filters:
+            branches:
+              only: release/1
+      - master:
+          name: "Update Master"
+          skip: false
+          context: "global"
+          requires:
+            - "Release/1"
+      - slack_msg:
+          name: "Slack Notification"
+          skip: false
+          context: "global"
+          requires:
+            - Release/1
+# END DEVOPS CONFIG
+jobs:
+  checkout:
+    docker:
+      - image: circleci/node:12
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Release Branch Check
+          command: |
+            export RELEASE="release/.*"
+            if [[ "$(git branch | grep \* | cut -d ' ' -f2)" =~ $RELEASE ]] ; then
+              echo "Release branch - checking out last tag $(git describe --abbrev=0)" ;
+              git checkout $(git describe --abbrev=0)
+            else
+              echo "Not release branch - moving forward." ;
+            fi
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - ./
+  env:
+    docker:
+      - image: circleci/node:12
+    working_directory: ~/project
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: 'Setup Variables'
+          command: |
+            mkdir -p .circleci/ && touch .circleci/env
+            export TAG="$(git describe --abbrev=0)"
+            export ALPHA="^v?([0-9]+\d*)\.([0-9]+\d*)\.([0-9]+\d*)-alpha((\.[0-9]+)|$)$"
+            export BETA="^v?([0-9]+\d*)\.([0-9]+\d*)\.([0-9]+\d*)-beta((\.[0-9]+)|$)$"
+            export STABLE="^v?([0-9]+\d*)\.([0-9]+\d*)\.([0-9]+\d*)$"
+            if [[ "$TAG" =~ $ALPHA ]] ; then
+              echo "export TAG=ALPHA" >> .circleci/env
+            elif [[ "$TAG" =~ $BETA ]] ; then
+              echo "export TAG=BETA" >> .circleci/env
+            elif [[ "$TAG" =~ $STABLE ]] ; then
+              echo "export TAG=STABLE" >> .circleci/env
+            else
+              echo "Unknown tag $TAG"
+            fi
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - .circleci
+  dependencies:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Dependencies"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "package.json" }}
+            - v1-dependencies-
+      - run:
+          name: Dependencies
+          command: npm install
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - node_modules
+  test:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Unit Test"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Unit Test
+          command: npm run test
+  e2e:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip E2E Test"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: E2E Test
+          command: npm run e2e
+  lint:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Lint"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Lint
+          command: npm run lint
+  audit:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Audit"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Audit
+          command: npm audit
+  build:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Build"
+        default: false
+        type: boolean
+      target:
+        description: "Target directory"
+        default: "dist"
+        type: string
+    environment:
+      TARGET: << parameters.target >>
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Release Branch Check
+          command: |
+            export RELEASE="release/.*"
+            if [[ "$(git branch | grep \* | cut -d ' ' -f2)" =~ $RELEASE ]] ; then
+              echo "Release branch - checking out last tag $(git describe --abbrev=0)" ;
+              git checkout $(git describe --abbrev=0)
+            else
+              echo "Not release branch - moving forward." ;
+            fi
+      - run:
+          name: Build
+          command: npm run build
+      - run:
+          name: Packaging Artifacts
+          command: tar czvf dist.tar.gz "$TARGET"
+      - store_artifacts:
+          path: ~/project/dist.tar.gz
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - <<parameters.target>>
+  deploy:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Deploy"
+        default: false
+        type: boolean
+    working_directory: ~/project
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Release Branch Check
+          command: |
+            export RELEASE="release/.*"
+            if [[ "$(git branch | grep \* | cut -d ' ' -f2)" =~ $RELEASE ]] ; then
+              echo "Release branch - checking out last tag $(git describe --abbrev=0)" ;
+              git checkout $(git describe --abbrev=0)
+            else
+              echo "Not release branch - moving forward." ;
+            fi
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: NPMRC
+          command: echo "_authToken=$NPM_TOKEN" > ".npmrc"
+      - run:
+          name: Publish
+          command: npm publish
+  master:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Master Update"
+        default: false
+        type: boolean
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - checkout
+      - run:
+          name: Release Branch Check
+          command: |
+            export RELEASE="release/.*"
+            if [[ "$(git branch | grep \* | cut -d ' ' -f2)" =~ $RELEASE ]] ; then
+              echo "Release branch - checking out last tag $(git describe --abbrev=0)" ;
+              git checkout $(git describe --abbrev=0)
+            else
+              echo "Not release branch - moving forward." ;
+            fi
+      - run:
+          name: Evaluate Tags
+          command: |
+            export STABLE="^v?([0-9]+\d*)\.([0-9]+\d*)\.([0-9]+\d*)$"
+            if [[ "$(git describe --abbrev=0)" =~ $STABLE ]] ; then
+              echo "Update master" ;
+            else
+              echo "Do not update master" ;
+              circleci-agent step halt
+            fi
+      - run:
+          name: Setup Git
+          command: |
+            git config user.email "engineering@wearewiser.com"
+            git config user.name "CircleCI"
+      - run:
+          name: Update Master
+          command: git branch -f master HEAD
+      - run:
+          name: Checkout Master
+          command: git checkout master
+      - run:
+          name: Push Master
+          command: |
+            echo "$(echo $CIRCLE_REPOSITORY_URL | sed s/:/\\//g | sed s/git@/https\:\\/\\/${GITHUB_TOKEN}@/g)"
+            git push "$(echo $CIRCLE_REPOSITORY_URL | sed s/:/\\//g | sed s/git@/https\:\\/\\/${GITHUB_TOKEN}@/g)" master
+  slack_msg:
+    docker:
+      - image: circleci/node:12
+    parameters:
+      skip:
+        description: "Skip Slack Release Notification"
+        default: false
+        type: boolean
+    steps:
+      - when:
+          condition: <<parameters.skip>>
+          steps:
+            - run:
+                name: Skip
+                command: circleci-agent step halt
+      - checkout
+      - slack/notify:
+          message: "Release ${CIRCLE_PROJECT_REPONAME}@$(git describe --abbrev=0) published"
+          color: "#5031aa"
+          webhook: "${SLACK_HOOK}"
+          include_visit_job_action: true
+          include_project_field: true

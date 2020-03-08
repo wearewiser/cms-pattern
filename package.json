@@ -14,7 +14,7 @@
     "docs": "node node_modules/typedoc/bin/typedoc --out docs/ src/ && echo '*\n!.gitignore' > docs/.gitignore",
     "lint": "node node_modules/tslint/bin/tslint -c tslint.json -e \"**/*.spec.ts\"  src/**/*.ts"
   },
-  "author": "",
+  "author": "John Fedoruk <johnny@johnfedoruk.ca> (https://github.com/johnfedoruk/)",
   "license": "MIT",
   "peerDependencies": {
     "reflect-metadata": "^0.1.13",
