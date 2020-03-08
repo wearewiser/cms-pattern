@@ -68,6 +68,8 @@ class DemoHomePageRepository implements SinglePageRepository<HomePage, undefined
 >
 > We can also have implemented [MultiPageRepository](#MultiPageRepository) to resolve a set of pages that are instantiations of the same class.
 
+In order to register the `DemoHomePageRepository` to resolve `HomePage`, we must define an extension of [PageDownloader](#PageDownloader) and add all [SinglePageRepositoryRegistrations](#SinglePageRepositoryRegistration) and [MultiPageRepositoryRegistrations](#MultiPageRepositoryRegistration) to the `registrations` array.
+
 ```TypeScript
 import {
   PageDownloader,
