@@ -1,0 +1,11 @@
+/node_modules/
+/src/
+/dist/
+/.nyc_output/
+/docs/
+/coverage/
+/src/config.*
+/.GOOGLE_APPLICATION_CREDENTIALS.json
+/.npmrc
+/.vscode/
+/ormconfig.json
