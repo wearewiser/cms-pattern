@@ -43,6 +43,7 @@ workflows:
       - build:
           name: "Build"
           skip: false
+          target: "lib"
           requires:
             - "Unit Test"
             - "E2E Test"
@@ -244,6 +245,12 @@ jobs:
         description: "Skip Build"
         default: false
         type: boolean
+      target:
+        description: "Target directory"
+        default: "dist"
+        type: string
+    environment:
+      TARGET: << parameters.target >>
     working_directory: ~/project
     steps:
       - when:
@@ -269,13 +276,13 @@ jobs:
           command: npm run build
       - run:
           name: Packaging Artifacts
-          command: tar czvf dist.tar.gz dist
+          command: tar czvf "$TARGET".tar.gz "$TARGET"
       - store_artifacts:
-          path: ~/project/dist.tar.gz
+          path: ~/project/"$TARGET".tar.gz
       - persist_to_workspace:
           root: ~/project
           paths:
-            - dist
+            - "$TARGET"
   deploy:
     docker:
       - image: circleci/node:12
