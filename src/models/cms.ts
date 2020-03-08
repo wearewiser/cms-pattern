@@ -7,6 +7,11 @@ import { CmsPageFilter } from './cms-filter';
 
 /**
  * CMS<T extends Object>
+ *
+ * Provides access to CMS state through Observables
+ * to specific instantiations or sets of instantiations
+ * resolved by PageDownloader<T, S> repositorty
+ * registrations.
  */
 export class CMS<T extends Object> {
 
