@@ -276,13 +276,13 @@ jobs:
           command: npm run build
       - run:
           name: Packaging Artifacts
-          command: tar czvf "$TARGET".tar.gz "$TARGET"
+          command: tar czvf dist.tar.gz "$TARGET"
       - store_artifacts:
-          path: ~/project/"$TARGET".tar.gz
+          path: ~/project/dist.tar.gz
       - persist_to_workspace:
           root: ~/project
           paths:
-            - "$TARGET"
+            - <<parameters.target>>
   deploy:
     docker:
       - image: circleci/node:12
