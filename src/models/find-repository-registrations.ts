@@ -25,7 +25,7 @@ export function findRepositoryRegistrations<T, S, U extends ReadonlyRepository<T
         registration.Data === Page,
     );
   if (matches.length < 1) {
-    throw new Error(`No repository registered for page ${Page.constructor.name} in the registration set ${Registration.constructor.name}`);
+    throw new Error(`No repository registered for page ${Page.name} in the ${Registration.name} set of registrations`);
   }
   return matches.map(
     ({ Repository }) => Repository as Constructor<U>,
