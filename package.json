@@ -35,12 +35,12 @@
     "rxjs": "^5.4.3",
     "tslint": "^5.20.0",
     "tslint-config-airbnb": "^5.11.2",
-    "ts-loader": "^6.2.0",
+    "ts-loader": "^9.4.2",
     "ts-node": "^3.3.0",
     "tsnode-di": "0.0.3",
     "typedoc": "^0.15.0",
     "typescript": "^3.7.3",
-    "webpack": "^4.41.0",
-    "webpack-cli": "^3.3.9"
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
   }
 }
